@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kreative Salon | Login/Signup</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+
+<body>
+
+  <section class="py-5 bg-light" style="min-height:100vh; display:flex; align-items:center;">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-5">
+
+          <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4 p-md-5">
+
+              <h2 class="fw-bold mb-3 text-center">Login / Signup</h2>
+
+              <!-- Tabs -->
+              <div class="btn-group w-100 mb-3">
+                <input type="radio" class="btn-check" name="authMode" id="loginTab" checked>
+                <label class="btn btn-outline-primary" for="loginTab">Login</label>
+
+                <input type="radio" class="btn-check" name="authMode" id="signupTab">
+                <label class="btn btn-outline-secondary" for="signupTab">Signup</label>
+              </div>
+
+              <!-- Form -->
+              <form id="authForm" novalidate>
+
+                <!-- LOGIN -->
+                <div id="loginFields">
+                  <div class="mb-3">
+                    <label>Email</label>
+                    <input type="email" class="form-control" id="loginEmail">
+                  </div>
+
+                  <div class="mb-3">
+                    <label>Password</label>
+                    <input type="password" class="form-control" id="loginPassword">
+                  </div>
+                </div>
+
+                <!-- SIGNUP -->
+                <div id="signupFields" style="display:none;">
+                  <div class="mb-3">
+                    <label>Name</label>
+                    <input type="text" class="form-control" id="signupName">
+                  </div>
+
+                  <div class="mb-3">
+                    <label>Email</label>
+                    <input type="email" class="form-control" id="signupEmail">
+                  </div>
+
+                  <div class="mb-3">
+                    <label>Password</label>
+                    <input type="password" class="form-control" id="signupPassword">
+                  </div>
+
+                  <div class="mb-3">
+                    <label>Role</label>
+                    <select class="form-select" id="signupRole">
+                      <option value="user">Customer</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button class="btn btn-primary w-100" type="submit" id="authSubmit">
+                  Login
+                </button>
+
+              </form>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="assets/js/auth.js"></script>
+
+  <script>
+    const loginTab = document.getElementById("loginTab");
+    const signupTab = document.getElementById("signupTab");
+
+    const loginFields = document.getElementById("loginFields");
+    const signupFields = document.getElementById("signupFields");
+
+    const authSubmit = document.getElementById("authSubmit");
+    const authForm = document.getElementById("authForm");
+
+    function toggleForm() {
+      const isLogin = loginTab.checked;
+
+      loginFields.style.display = isLogin ? "block" : "none";
+      signupFields.style.display = isLogin ? "none" : "block";
+
+      authSubmit.textContent = isLogin ? "Login" : "Signup";
+    }
+
+    loginTab.addEventListener("change", toggleForm);
+    signupTab.addEventListener("change", toggleForm);
+
+    authForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      try {
+        if (loginTab.checked) {
+          const email = document.getElementById("loginEmail").value.trim();
+          const password = document.getElementById("loginPassword").value.trim();
+
+          if (!email || !password) {
+            alert("Enter email & password");
+            return;
+          }
+
+          await Auth.login(email, password);
+
+          alert("Login successful");
+
+          // ✅ REDIRECT FIX
+          window.location.replace("index.html");
+
+        } else {
+          const name = document.getElementById("signupName").value.trim();
+          const email = document.getElementById("signupEmail").value.trim();
+          const password = document.getElementById("signupPassword").value.trim();
+          const role = document.getElementById("signupRole").value;
+
+          if (!name || !email || !password) {
+            alert("Fill all fields");
+            return;
+          }
+
+          await Auth.register(name, email, password, role);
+
+          alert("Signup successful");
+
+          // ✅ REDIRECT FIX
+          window.location.replace("index.html");
+        }
+
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "Error occurred");
+      }
+    });
+
+    toggleForm();
+  </script>
+
+</body>
+</html>

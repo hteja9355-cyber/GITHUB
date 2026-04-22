@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kreative Salon | Booking</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css" />
+
+</head>
+<body class="protected">
+
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="index.html">Kreative Salon</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navMenu">
+<ul class="navbar-nav ms-auto" id="navbarLinks">
+          <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="services.html">Services</a></li>
+          <li class="nav-item"><a class="nav-link active" href="booking.html">Booking</a></li>
+          <li class="nav-item"><a class="nav-link" href="my-bookings.html">My Bookings</a></li>
+        </ul>
+        <a href="login.html" class="btn btn-outline-light ms-lg-3">Login</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="py-5 bg-light">
+    <div class="container">
+      <div class="row g-4 justify-content-center">
+        <div class="col-lg-8">
+          <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4 p-md-5">
+              <h1 class="fw-bold mb-3">Book Appointment</h1>
+              <p class="text-muted">Choose one or more services and schedule your slot.</p>
+
+              <form id="bookingForm" class="mt-4">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" class="form-control" id="customerName" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" class="form-control" id="customerPhone" required>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Select Services</label>
+                    <div class="row g-2" id="serviceCheckboxes"></div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-control" id="bookingDate" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Time</label>
+                    <select class="form-select" id="bookingTime" required>
+                      <option value="">Choose time</option>
+                      <option>09:00 AM</option>
+                      <option>10:00 AM</option>
+                      <option>11:00 AM</option>
+                      <option>12:00 PM</option>
+                      <option>02:00 PM</option>
+                      <option>03:00 PM</option>
+                      <option>04:00 PM</option>
+                      <option>05:00 PM</option>
+                      <option>06:00 PM</option>
+                    </select>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-control" id="bookingNotes" rows="3" placeholder="Optional notes"></textarea>
+                  </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
+                  <div>
+                    <strong>Total:</strong> <span id="bookingTotal">₹0</span>
+                  </div>
+                  <button class="btn btn-primary px-4" type="submit">Confirm Booking</button>
+                </div>
+              </form>
+
+              <div class="alert alert-success mt-4 d-none" id="bookingSuccess"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/js/auth.js"></script>
+
+  <script>
+    const services = [
+      { name: "Haircut", price: 200 },
+      { name: "Beard Trim", price: 100 },
+      { name: "Hair Wash", price: 150 },
+      { name: "Head Massage", price: 300 },
+      { name: "Facial", price: 500 },
+      { name: "Hair Coloring", price: 1000 },
+      { name: "Kids Haircut", price: 150 }
+    ];
+
+    window.addEventListener("DOMContentLoaded", function () {
+      const serviceCheckboxes = document.getElementById("serviceCheckboxes");
+      const bookingForm = document.getElementById("bookingForm");
+      const bookingTotal = document.getElementById("bookingTotal");
+      const bookingSuccess = document.getElementById("bookingSuccess");
+
+      function renderServiceCheckboxes() {
+        serviceCheckboxes.innerHTML = "";
+
+        services.forEach((service, index) => {
+          const col = document.createElement("div");
+          col.className = "col-md-6";
+
+          col.innerHTML = `
+            <div class="form-check border rounded-3 p-3 bg-white">
+              <input
+                class="form-check-input service-checkbox"
+                type="checkbox"
+                value="${service.name}"
+                data-price="${service.price}"
+                id="service${index}"
+              >
+              <label class="form-check-label ms-2" for="service${index}">
+                ${service.name} - ₹${service.price}
+              </label>
+            </div>
+          `;
+
+          serviceCheckboxes.appendChild(col);
+        });
+
+        document.querySelectorAll(".service-checkbox").forEach((checkbox) => {
+          checkbox.addEventListener("change", updateTotal);
+        });
+      }
+
+      function updateTotal() {
+        const selected = document.querySelectorAll(".service-checkbox:checked");
+        let total = 0;
+
+        selected.forEach((item) => {
+          total += Number(item.dataset.price);
+        });
+
+        bookingTotal.textContent = `₹${total}`;
+      }
+
+      async function saveBookingToDatabase(bookingData) {
+        const response = await fetch("http://localhost:5002/api/bookings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(bookingData)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to save booking");
+        }
+
+        return data;
+      }
+
+      bookingForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const customerName = document.getElementById("customerName").value.trim();
+        const customerPhone = document.getElementById("customerPhone").value.trim();
+        const bookingDate = document.getElementById("bookingDate").value;
+        const bookingTime = document.getElementById("bookingTime").value;
+        const bookingNotes = document.getElementById("bookingNotes").value.trim();
+
+        const selectedServices = Array.from(
+          document.querySelectorAll(".service-checkbox:checked")
+        ).map((item) => item.value);
+
+        const total = Array.from(
+          document.querySelectorAll(".service-checkbox:checked")
+        ).reduce((sum, item) => sum + Number(item.dataset.price), 0);
+
+        if (!customerName || !customerPhone || !bookingDate || !bookingTime) {
+          alert("Please fill all required fields.");
+          return;
+        }
+
+        if (selectedServices.length === 0) {
+          alert("Please select at least one service.");
+          return;
+        }
+
+      const bookingData = {
+        services: selectedServices,
+        appointmentDate: bookingDate,
+        appointmentTime: bookingTime,
+        notes: bookingNotes
+};
+
+        try {
+          await saveBookingToDatabase(bookingData);
+
+          bookingSuccess.classList.remove("d-none");
+          bookingSuccess.textContent = "Booking saved successfully!";
+
+          bookingForm.reset();
+          bookingTotal.textContent = "₹0";
+
+          setTimeout(() => {
+            window.location.href = "my-bookings.html";
+          }, 1200);
+        } catch (error) {
+          console.error("Booking error:", error);
+          alert(error.message || "Server error while saving booking.");
+        }
+      });
+
+      renderServiceCheckboxes();
+      updateTotal();
+    });
+  </script>
+</body>
+</html>
