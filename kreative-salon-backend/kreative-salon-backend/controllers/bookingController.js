@@ -38,7 +38,8 @@ const createBooking = async (req, res) => {
       appointmentDate: finalDate,
       appointmentTime: finalTime,
       notes: notes || "",
-      totalAmount
+      totalAmount,
+      userId: req.user.id
     });
 
     res.status(201).json({
@@ -67,7 +68,74 @@ const getAllBookings = async (req, res) => {
   }
 };
 
+const getUserBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find({ userId: req.user.id }).sort({ createdAt: -1 }).populate('userId', 'name');
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Get user bookings error:", error);
+    res.status(500).json({
+      message: "Failed to fetch bookings",
+      error: error.message
+    });
+  }
+};
+
+const getAdminStats = async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const totalBookings = await Booking.countDocuments();
+    const todayBookings = await Booking.countDocuments({
+      appointmentDate: { 
+        $gte: today.toISOString().split('T')[0],
+        $lt: tomorrow.toISOString().split('T')[0]
+      }
+    });
+    
+    const revenueResult = await Booking.aggregate([
+      { $group: { _id: null, totalRevenue: { $sum: '$totalAmount' } } }
+    ]);
+    
+    const expectedRevenue = revenueResult[0]?.totalRevenue || 0;
+
+    res.status(200).json({
+      totalBookings,
+      todayBookings,
+      expectedRevenue
+    });
+  } catch (error) {
+    console.error("Get admin stats error:", error);
+    res.status(500).json({
+      message: "Failed to fetch stats",
+      error: error.message
+    });
+  }
+};
+
+const getRecentBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find()
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('userId', 'name email phone');
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Get recent bookings error:", error);
+    res.status(500).json({
+      message: "Failed to fetch recent bookings",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createBooking,
-  getAllBookings
+  getAllBookings,
+  getUserBookings,
+  getAdminStats,
+  getRecentBookings
 };

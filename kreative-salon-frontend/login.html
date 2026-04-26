@@ -36,12 +36,19 @@
                 <!-- LOGIN -->
                 <div id="loginFields">
                   <div class="mb-3">
+                    <label>Role</label>
+                    <select class="form-select" id="loginRole">
+                      <option value="user">Customer</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <div class="mb-3" id="loginEmailField">
                     <label>Email</label>
                     <input type="email" class="form-control" id="loginEmail">
                   </div>
 
                   <div class="mb-3">
-                    <label>Password</label>
+                    <label id="loginPasswordLabel">Password</label>
                     <input type="password" class="form-control" id="loginPassword">
                   </div>
                 </div>
@@ -67,7 +74,6 @@
                     <label>Role</label>
                     <select class="form-select" id="signupRole">
                       <option value="user">Customer</option>
-                      <option value="admin">Admin</option>
                     </select>
                   </div>
                 </div>
@@ -105,6 +111,23 @@
       signupFields.style.display = isLogin ? "none" : "block";
 
       authSubmit.textContent = isLogin ? "Login" : "Signup";
+      
+      // Toggle login role
+      toggleLoginRole();
+    }
+
+    function toggleLoginRole() {
+      const role = document.getElementById("loginRole").value;
+      const emailField = document.getElementById("loginEmailField");
+      const passwordLabel = document.getElementById("loginPasswordLabel");
+
+      if (role === "admin") {
+        emailField.style.display = "none";
+        passwordLabel.textContent = "Admin Password";
+      } else {
+        emailField.style.display = "block";
+        passwordLabel.textContent = "Password";
+      }
     }
 
     loginTab.addEventListener("change", toggleForm);
@@ -115,8 +138,30 @@
 
       try {
         if (loginTab.checked) {
+          const role = document.getElementById("loginRole").value;
           const email = document.getElementById("loginEmail").value.trim();
           const password = document.getElementById("loginPassword").value.trim();
+
+          if (role === "admin") {
+            if (password !== "1234") {
+              alert("Invalid admin password");
+              return;
+            }
+            // Fake admin login
+            localStorage.setItem("authToken", "admin-fake-token");
+            localStorage.setItem("authUser", JSON.stringify({
+              id: "admin",
+              name: "Admin",
+              role: "admin",
+              email: "admin@kreative.com"
+            }));
+            if (window.Auth) {
+              window.Auth.updateNavbar();
+            }
+            alert("Admin login successful");
+            window.location.replace("admin.html");
+            return;
+          }
 
           if (!email || !password) {
             alert("Enter email & password");
@@ -155,6 +200,8 @@
       }
     });
 
+    document.getElementById("loginRole").addEventListener("change", toggleLoginRole);
+    toggleLoginRole();
     toggleForm();
   </script>
 

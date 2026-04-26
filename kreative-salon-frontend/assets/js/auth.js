@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:5002/api/auth";
+const API_BASE = "http://localhost:5003/api/auth";
 
 let currentUser = null;
 let authToken = null;
@@ -72,7 +72,7 @@ function updateNavbar() {
       <li class="nav-item"><a class="nav-link" href="my-bookings.html">My Bookings</a></li>
     `;
 
-    if (role === "admin") {
+    if (role === 'admin') {
       navHtml += `<li class="nav-item"><a class="nav-link" href="admin.html">Admin</a></li>`;
     }
 
@@ -168,8 +168,8 @@ async function initAuth() {
     return;
   }
 
-  // Validate token if present
-  if (isLoggedIn()) {
+  // Validate token if present (skip for fake admin token)
+  if (isLoggedIn() && authToken !== 'admin-fake-token') {
     try {
       await getMe();
     } catch (err) {

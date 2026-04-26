@@ -13,7 +13,7 @@
     <div class="container">
       <a class="navbar-brand fw-bold" href="index.html">Kreative Salon</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
-        <span class="navbar-toggler-icon"></span>
+        <span class="navbar-toggling-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navMenu">
         <ul class="navbar-nav ms-auto" id="navbarLinks">
@@ -52,7 +52,11 @@
       `;
 
       try {
-        const response = await fetch("http://localhost:5002/api/bookings");
+        const response = await fetch("http://localhost:5003/api/bookings/my", {
+          headers: {
+            "Authorization": localStorage.getItem("authToken") ? `Bearer ${localStorage.getItem("authToken")}` : ""
+          }
+        });
         const bookings = await response.json();
 
         if (!response.ok) {

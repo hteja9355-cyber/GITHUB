@@ -63,135 +63,63 @@ function updateBookingTotal() {
   if (totalEl) totalEl.textContent = `₹${total}`;
 }
 
-function getBookings() {
-  return JSON.parse(localStorage.getItem("kreativeBookings") || "[]");
-}
+async function renderAdmin() {
+  const table = document.getElementById("adminBookingsTable");
+  const serviceList = document.getElementById("adminServiceList");
+  const totalBookingsEl = document.getElementById("adminTotalBookings");
+  const todayBookingsEl = document.getElementById("adminTodayBookings");
+  const totalRevenueEl = document.getElementById("adminTotalRevenue");
 
-function saveBookings(bookings) {
-  localStorage.setItem("kreativeBookings", JSON.stringify(bookings));
-}
+  if (!table || !serviceList || !totalBookingsEl || !todayBookingsEl || !totalRevenueEl) return;
 
-function setupBookingForm() {
-  const form = document.getElementById("bookingForm");
-  if (!form) return;
+  try {
+    // Load stats
+    const statsRes = await fetch("http://localhost:5003/api/bookings/admin/stats", {
+      headers: {
+        "Authorization": localStorage.getItem("authToken") ? `Bearer ${localStorage.getItem("authToken")}` : ""
+      }
+    });
+    const stats = await statsRes.json();
+    totalBookingsEl.textContent = stats.totalBookings || 0;
+    todayBookingsEl.textContent = stats.todayBookings || 0;
+    totalRevenueEl.textContent = `₹${stats.expectedRevenue || 0}`;
 
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
+    // Load recent bookings
+    const recentRes = await fetch("http://localhost:5003/api/bookings/admin/recent", {
+      headers: {
+        "Authorization": localStorage.getItem("authToken") ? `Bearer ${localStorage.getItem("authToken")}` : ""
+      }
+    });
+    const bookings = await recentRes.json();
 
-    const name = document.getElementById("customerName")?.value.trim() || "";
-    const phone = document.getElementById("customerPhone")?.value.trim() || "";
-    const date = document.getElementById("bookingDate")?.value || "";
-    const time = document.getElementById("bookingTime")?.value || "";
-    const notes = document.getElementById("bookingNotes")?.value.trim() || "";
+    serviceList.innerHTML = services.map(s => `
+      <div class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+          <div class="fw-semibold">${s.name}</div>
+          <small class="text-muted">${s.duration}</small>
+        </div>
+        <span class="badge text-bg-primary">₹${s.price}</span>
+      </div>
+    `).join("");
 
-    const selectedIds = [...document.querySelectorAll(".service-check:checked")].map(el => Number(el.value));
-    const selectedServices = services.filter(s => selectedIds.includes(s.id));
-
-    if (!selectedServices.length) {
-      alert("Please select at least one service.");
+    if (!bookings.length) {
+      table.innerHTML = `<tr><td colspan="5" class="text-muted">No bookings yet.</td></tr>`;
       return;
     }
 
-    const total = selectedServices.reduce((sum, s) => sum + s.price, 0);
-
-    const booking = {
-      id: Date.now(),
-      name,
-      phone,
-      date,
-      time,
-      notes,
-      services: selectedServices.map(s => s.name),
-      total
-    };
-
-    const bookings = getBookings();
-    bookings.unshift(booking);
-    saveBookings(bookings);
-
-    const success = document.getElementById("bookingSuccess");
-    if (success) {
-      success.classList.remove("d-none");
-      success.textContent = `Booking confirmed for ${name}. Total: ₹${total}`;
-    }
-
-    form.reset();
-    updateBookingTotal();
-  });
-}
-
-function renderBookings() {
-  const container = document.getElementById("bookingsList");
-  if (!container) return;
-
-  const bookings = getBookings();
-
-  if (!bookings.length) {
-    container.innerHTML = `
-      <div class="col-12">
-        <div class="alert alert-secondary">No bookings yet. Book your first appointment.</div>
-      </div>
-    `;
-    return;
+    table.innerHTML = bookings.map(b => `
+      <tr>
+        <td>${b.name || b.userId?.name || 'Customer'}</td>
+        <td>${Array.isArray(b.services) ? b.services.join(", ") : b.services}</td>
+        <td>${b.appointmentDate}</td>
+        <td>${b.appointmentTime}</td>
+        <td>₹${b.totalAmount}</td>
+      </tr>
+    `).join("");
+  } catch (error) {
+    console.error("Admin dashboard load error:", error);
+    table.innerHTML = `<tr><td colspan="5" class="text-danger">Failed to load data</td></tr>`;
   }
-
-  container.innerHTML = bookings.map(booking => `
-    <div class="col-md-6">
-      <div class="card border-0 shadow-sm rounded-4 h-100">
-        <div class="card-body p-4">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <h5 class="fw-bold mb-0">${booking.name}</h5>
-            <span class="badge text-bg-primary">₹${booking.total}</span>
-          </div>
-          <p class="mb-2"><strong>Services:</strong> ${booking.services.join(", ")}</p>
-          <p class="mb-2"><strong>Date:</strong> ${booking.date}</p>
-          <p class="mb-2"><strong>Time:</strong> ${booking.time}</p>
-          <p class="mb-0"><strong>Phone:</strong> ${booking.phone}</p>
-        </div>
-      </div>
-    </div>
-  `).join("");
-}
-
-function renderAdmin() {
-  const bookings = getBookings();
-  const table = document.getElementById("adminBookingsTable");
-  const serviceList = document.getElementById("adminServiceList");
-  const totalBookings = document.getElementById("adminTotalBookings");
-  const todayBookings = document.getElementById("adminTodayBookings");
-  const totalRevenue = document.getElementById("adminTotalRevenue");
-
-  if (!table || !serviceList || !totalBookings || !todayBookings || !totalRevenue) return;
-
-  totalBookings.textContent = bookings.length;
-  const today = new Date().toISOString().split("T")[0];
-  todayBookings.textContent = bookings.filter(b => b.date === today).length;
-  totalRevenue.textContent = `₹${bookings.reduce((sum, b) => sum + b.total, 0)}`;
-
-  serviceList.innerHTML = services.map(s => `
-    <div class="list-group-item d-flex justify-content-between align-items-center">
-      <div>
-        <div class="fw-semibold">${s.name}</div>
-        <small class="text-muted">${s.duration}</small>
-      </div>
-      <span class="badge text-bg-primary">₹${s.price}</span>
-    </div>
-  `).join("");
-
-  if (!bookings.length) {
-    table.innerHTML = `<tr><td colspan="5" class="text-muted">No bookings yet.</td></tr>`;
-    return;
-  }
-
-  table.innerHTML = bookings.map(b => `
-    <tr>
-      <td>${b.name}</td>
-      <td>${b.services.join(", ")}</td>
-      <td>${b.date}</td>
-      <td>${b.time}</td>
-      <td>₹${b.total}</td>
-    </tr>
-  `).join("");
 }
 
 // Initialize only after DOM is ready
@@ -204,7 +132,5 @@ window.addEventListener("DOMContentLoaded", async () => {
   renderServiceCards("allServices", services);
   renderCheckboxes();
   updateBookingTotal();
-  setupBookingForm();
-  renderBookings();
   renderAdmin();
 });
