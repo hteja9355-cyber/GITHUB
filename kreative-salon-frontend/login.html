@@ -118,14 +118,11 @@
 
     function toggleLoginRole() {
       const role = document.getElementById("loginRole").value;
-      const emailField = document.getElementById("loginEmailField");
       const passwordLabel = document.getElementById("loginPasswordLabel");
 
       if (role === "admin") {
-        emailField.style.display = "none";
         passwordLabel.textContent = "Admin Password";
       } else {
-        emailField.style.display = "block";
         passwordLabel.textContent = "Password";
       }
     }
@@ -142,38 +139,22 @@
           const email = document.getElementById("loginEmail").value.trim();
           const password = document.getElementById("loginPassword").value.trim();
 
-          if (role === "admin") {
-            if (password !== "1234") {
-              alert("Invalid admin password");
-              return;
-            }
-            // Fake admin login
-            localStorage.setItem("authToken", "admin-fake-token");
-            localStorage.setItem("authUser", JSON.stringify({
-              id: "admin",
-              name: "Admin",
-              role: "admin",
-              email: "admin@kreative.com"
-            }));
-            if (window.Auth) {
-              window.Auth.updateNavbar();
-            }
-            alert("Admin login successful");
-            window.location.replace("admin.html");
-            return;
-          }
-
           if (!email || !password) {
             alert("Enter email & password");
             return;
           }
 
-          await Auth.login(email, password);
+          await Auth.login(email, password, role);
 
           alert("Login successful");
 
           // ✅ REDIRECT FIX
-          window.location.replace("index.html");
+          const userObj = JSON.parse(localStorage.getItem("authUser"));
+          if (userObj && userObj.role === "admin") {
+            window.location.replace("admin.html");
+          } else {
+            window.location.replace("index.html");
+          }
 
         } else {
           const name = document.getElementById("signupName").value.trim();

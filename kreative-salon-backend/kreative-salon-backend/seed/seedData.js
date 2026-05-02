@@ -45,7 +45,9 @@ const seed = async () => {
     ]);
 
     await Booking.create({
-      user: user._id,
+      userId: user._id,
+      name: user.name,
+      phone: user.phone,
       services: [services[0]._id, services[1]._id],
       appointmentDate: "2026-04-10",
       appointmentTime: "10:30 AM",

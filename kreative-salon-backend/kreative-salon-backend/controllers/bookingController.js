@@ -22,7 +22,9 @@ const createBooking = async (req, res) => {
       });
     }
 
-    const totalAmount = Array.isArray(services)
+    const totalAmount = req.body.totalAmount !== undefined
+      ? Number(req.body.totalAmount)
+      : Array.isArray(services)
       ? services.reduce((sum, service) => {
           if (typeof service === "object" && service.price) {
             return sum + Number(service.price);
@@ -83,17 +85,13 @@ const getUserBookings = async (req, res) => {
 
 const getAdminStats = async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const pad = n => n < 10 ? '0' + n : n;
+    const d = new Date();
+    const localToday = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
     const totalBookings = await Booking.countDocuments();
     const todayBookings = await Booking.countDocuments({
-      appointmentDate: { 
-        $gte: today.toISOString().split('T')[0],
-        $lt: tomorrow.toISOString().split('T')[0]
-      }
+      appointmentDate: localToday
     });
     
     const revenueResult = await Booking.aggregate([

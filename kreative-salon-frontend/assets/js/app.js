@@ -1,15 +1,46 @@
-const services = [
-  { id: 1, name: "Haircut", price: 200, duration: "30 min" },
-  { id: 2, name: "Beard Trim", price: 100, duration: "20 min" },
-  { id: 3, name: "Hair Wash", price: 150, duration: "20 min" },
-  { id: 4, name: "Head Massage", price: 300, duration: "30 min" },
-  { id: 5, name: "Facial", price: 500, duration: "45 min" },
-  { id: 6, name: "Hair Coloring", price: 1000, duration: "90 min" },
-  { id: 7, name: "Hair Straightening", price: 1500, duration: "120 min" },
-  { id: 8, name: "Dandruff Treatment", price: 400, duration: "40 min" },
-  { id: 9, name: "Shaving", price: 120, duration: "20 min" },
-  { id: 10, name: "Kids Haircut", price: 150, duration: "25 min" }
-];
+let services = [];
+
+async function fetchServices() {
+  try {
+    const res = await fetch("http://localhost:5003/api/services");
+    if (!res.ok) throw new Error("Failed to fetch services");
+    const data = await res.json();
+    
+    // Map the backend data to the format expected by the frontend
+    services = data.map(s => ({
+      id: s._id,
+      name: s.name,
+      price: s.price,
+      duration: `${s.durationMinutes} min`,
+      description: s.description
+    }));
+  } catch (error) {
+    console.error("Error fetching services:", error);
+  }
+}
+
+async function addService(serviceData) {
+  try {
+    const res = await fetch("http://localhost:5003/api/services", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": localStorage.getItem("authToken") ? `Bearer ${localStorage.getItem("authToken")}` : ""
+      },
+      body: JSON.stringify(serviceData)
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || "Failed to add service");
+    }
+
+    return await res.json();
+  } catch (error) {
+    console.error("Error adding service:", error);
+    throw error;
+  }
+}
 
 function renderServiceCards(targetId, data) {
   const container = document.getElementById(targetId);
@@ -54,9 +85,9 @@ function renderCheckboxes() {
 }
 
 function updateBookingTotal() {
-  const selected = [...document.querySelectorAll(".service-check:checked")].map(el => Number(el.value));
+  const selected = [...document.querySelectorAll(".service-check:checked")].map(el => el.value);
   const total = services
-    .filter(s => selected.includes(s.id))
+    .filter(s => selected.includes(String(s.id)))
     .reduce((sum, s) => sum + s.price, 0);
 
   const totalEl = document.getElementById("bookingTotal");
@@ -75,6 +106,7 @@ async function renderAdmin() {
   try {
     // Load stats
     const statsRes = await fetch("http://localhost:5003/api/bookings/admin/stats", {
+      cache: "no-store",
       headers: {
         "Authorization": localStorage.getItem("authToken") ? `Bearer ${localStorage.getItem("authToken")}` : ""
       }
@@ -86,6 +118,7 @@ async function renderAdmin() {
 
     // Load recent bookings
     const recentRes = await fetch("http://localhost:5003/api/bookings/admin/recent", {
+      cache: "no-store",
       headers: {
         "Authorization": localStorage.getItem("authToken") ? `Bearer ${localStorage.getItem("authToken")}` : ""
       }
@@ -127,6 +160,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   if (window.Auth) {
     await Auth.initAuth();
   }
+
+  await fetchServices();
 
   renderServiceCards("popularServices", services.slice(0, 6));
   renderServiceCards("allServices", services);

@@ -96,21 +96,22 @@
   <script src="assets/js/auth.js"></script>
 
   <script>
-    const services = [
-      { name: "Haircut", price: 200 },
-      { name: "Beard Trim", price: 100 },
-      { name: "Hair Wash", price: 150 },
-      { name: "Head Massage", price: 300 },
-      { name: "Facial", price: 500 },
-      { name: "Hair Coloring", price: 1000 },
-      { name: "Kids Haircut", price: 150 }
-    ];
+    let services = [];
 
-    window.addEventListener("DOMContentLoaded", function () {
+    window.addEventListener("DOMContentLoaded", async function () {
       const serviceCheckboxes = document.getElementById("serviceCheckboxes");
       const bookingForm = document.getElementById("bookingForm");
       const bookingTotal = document.getElementById("bookingTotal");
       const bookingSuccess = document.getElementById("bookingSuccess");
+
+      try {
+        const res = await fetch("http://localhost:5003/api/services");
+        if (res.ok) {
+          services = await res.json();
+        }
+      } catch (err) {
+        console.error("Failed to load services", err);
+      }
 
       function renderServiceCheckboxes() {
         serviceCheckboxes.innerHTML = "";
@@ -205,7 +206,8 @@
           services: selectedServices,
           appointmentDate: bookingDate,
           appointmentTime: bookingTime,
-          notes: bookingNotes
+          notes: bookingNotes,
+          totalAmount: total
         };
 
         try {

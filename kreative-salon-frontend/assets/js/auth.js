@@ -116,12 +116,13 @@ async function apiRequest(endpoint, options = {}) {
   return data;
 }
 
-async function login(email, password) {
+async function login(email, password, role = "user") {
   const data = await apiRequest("/login", {
     method: "POST",
     body: JSON.stringify({
       email: email.trim().toLowerCase(),
-      password: String(password).trim()
+      password: String(password).trim(),
+      role
     })
   });
 
@@ -169,7 +170,7 @@ async function initAuth() {
   }
 
   // Validate token if present (skip for fake admin token)
-  if (isLoggedIn() && authToken !== 'admin-fake-token') {
+  if (isLoggedIn()) {
     try {
       await getMe();
     } catch (err) {
