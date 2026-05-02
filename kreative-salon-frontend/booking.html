@@ -76,11 +76,11 @@
                   </div>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
+<div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
                   <div>
                     <strong>Total:</strong> <span id="bookingTotal">₹0</span>
                   </div>
-                  <button class="btn btn-primary px-4" type="submit">Confirm Booking</button>
+                  <button class="btn btn-primary px-4" type="submit">Request Booking</button>
                 </div>
               </form>
 
@@ -213,8 +213,8 @@
         try {
           await saveBookingToDatabase(bookingData);
 
-          bookingSuccess.classList.remove("d-none");
-          bookingSuccess.textContent = "Booking saved successfully!";
+bookingSuccess.classList.remove("d-none");
+          bookingSuccess.textContent = "Booking request submitted successfully! You will be notified once it's confirmed.";
 
           bookingForm.reset();
           bookingTotal.textContent = "₹0";

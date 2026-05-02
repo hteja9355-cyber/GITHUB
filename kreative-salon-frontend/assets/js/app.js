@@ -96,10 +96,12 @@ function updateBookingTotal() {
 
 async function renderAdmin() {
   const table = document.getElementById("adminBookingsTable");
+  const pendingTable = document.getElementById("pendingRequestsTable");
   const serviceList = document.getElementById("adminServiceList");
   const totalBookingsEl = document.getElementById("adminTotalBookings");
   const todayBookingsEl = document.getElementById("adminTodayBookings");
   const totalRevenueEl = document.getElementById("adminTotalRevenue");
+  const noRequestsMsg = document.getElementById("noRequestsMsg");
 
   if (!table || !serviceList || !totalBookingsEl || !todayBookingsEl || !totalRevenueEl) return;
 
@@ -116,7 +118,37 @@ async function renderAdmin() {
     todayBookingsEl.textContent = stats.todayBookings || 0;
     totalRevenueEl.textContent = `₹${stats.expectedRevenue || 0}`;
 
-    // Load recent bookings
+    // Load pending requests
+    const pendingRes = await fetch("http://localhost:5003/api/bookings/admin/requests", {
+      cache: "no-store",
+      headers: {
+        "Authorization": localStorage.getItem("authToken") ? `Bearer ${localStorage.getItem("authToken")}` : ""
+      }
+    });
+    const pendingRequests = await pendingRes.json();
+
+    // Render pending requests
+    if (!pendingRequests.length) {
+      pendingTable.innerHTML = "";
+      if (noRequestsMsg) noRequestsMsg.classList.remove("d-none");
+    } else {
+      if (noRequestsMsg) noRequestsMsg.classList.add("d-none");
+      pendingTable.innerHTML = pendingRequests.map(b => `
+        <tr>
+          <td>${b.name || b.userId?.name || 'Customer'}</td>
+          <td>${Array.isArray(b.services) ? b.services.join(", ") : b.services}</td>
+          <td>${b.appointmentDate}</td>
+          <td>${b.appointmentTime}</td>
+          <td>
+            <button class="btn btn-sm btn-success" onclick="confirmBookingRequest('${b._id}')">
+              Confirm
+            </button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    // Load confirmed bookings only
     const recentRes = await fetch("http://localhost:5003/api/bookings/admin/recent", {
       cache: "no-store",
       headers: {
@@ -135,25 +167,142 @@ async function renderAdmin() {
       </div>
     `).join("");
 
-    if (!bookings.length) {
-      table.innerHTML = `<tr><td colspan="5" class="text-muted">No bookings yet.</td></tr>`;
+    // Filter confirmed bookings only
+    const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
+    
+if (!confirmedBookings.length) {
+      table.innerHTML = `<tr><td colspan="6" class="text-muted">No confirmed bookings yet.</td></tr>`;
       return;
     }
 
-    table.innerHTML = bookings.map(b => `
+table.innerHTML = confirmedBookings.map(b => `
       <tr>
         <td>${b.name || b.userId?.name || 'Customer'}</td>
         <td>${Array.isArray(b.services) ? b.services.join(", ") : b.services}</td>
+        <td>${b.phone || b.userId?.phone || 'N/A'}</td>
         <td>${b.appointmentDate}</td>
         <td>${b.appointmentTime}</td>
         <td>₹${b.totalAmount}</td>
       </tr>
     `).join("");
-  } catch (error) {
+} catch (error) {
     console.error("Admin dashboard load error:", error);
-    table.innerHTML = `<tr><td colspan="5" class="text-danger">Failed to load data</td></tr>`;
+    table.innerHTML = `<tr><td colspan="6" class="text-danger">Failed to load data</td></tr>`;
   }
 }
+
+// Confirm a booking request (called from admin dashboard)
+async function confirmBookingRequest(bookingId) {
+  if (!confirm("Are you sure you want to confirm this booking?")) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`http://localhost:5003/api/bookings/${bookingId}/confirm`, {
+      method: "PUT",
+      headers: {
+        "Authorization": localStorage.getItem("authToken") ? `Bearer ${localStorage.getItem("authToken")}` : ""
+      }
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || "Failed to confirm booking");
+    }
+
+    alert("Booking confirmed successfully!");
+    
+    // Refresh the admin dashboard
+    renderAdmin();
+  } catch (error) {
+    console.error("Confirm booking error:", error);
+    alert(error.message || "Failed to confirm booking");
+  }
+}
+
+// Load analytics data for admin dashboard
+async function loadAnalytics() {
+  const periodSelect = document.getElementById("analyticsPeriod");
+  const period = periodSelect ? periodSelect.value : 30;
+
+  const analyticsTotalBookings = document.getElementById("analyticsTotalBookings");
+  const analyticsRevenue = document.getElementById("analyticsRevenue");
+  const analyticsAvgValue = document.getElementById("analyticsAvgValue");
+  const analyticsCustomers = document.getElementById("analyticsCustomers");
+  const popularServicesList = document.getElementById("popularServicesList");
+
+  if (!analyticsTotalBookings) return;
+
+  try {
+    // Load booking analytics
+    const analyticsRes = await fetch(`http://localhost:5003/api/analytics/bookings?period=${period}`, {
+      headers: {
+        "Authorization": localStorage.getItem("authToken") ? `Bearer ${localStorage.getItem("authToken")}` : ""
+      }
+    });
+    const analytics = await analyticsRes.json();
+
+    analyticsTotalBookings.textContent = analytics.totalBookings || 0;
+    analyticsRevenue.textContent = `₹${analytics.totalRevenue || 0}`;
+    analyticsAvgValue.textContent = `₹${analytics.avgBookingValue || 0}`;
+    analyticsCustomers.textContent = analytics.totalCustomers || 0;
+
+    // Render popular services
+    if (analytics.popularServices && analytics.popularServices.length) {
+      popularServicesList.innerHTML = analytics.popularServices.map(s => `
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <div class="fw-semibold">${s._id || 'Unknown'}</div>
+          <span class="badge text-bg-primary">${s.count} bookings</span>
+        </div>
+      `).join("");
+    } else {
+      popularServicesList.innerHTML = '<div class="text-muted">No data available</div>';
+    }
+  } catch (error) {
+    console.error("Error loading analytics:", error);
+  }
+
+  try {
+    // Load monthly stats
+    const monthlyRes = await fetch("http://localhost:5003/api/analytics/monthly", {
+      headers: {
+        "Authorization": localStorage.getItem("authToken") ? `Bearer ${localStorage.getItem("authToken")}` : ""
+      }
+    });
+    const monthly = await monthlyRes.json();
+
+    const thisMonthBookings = document.getElementById("thisMonthBookings");
+    const thisMonthRevenue = document.getElementById("thisMonthRevenue");
+    const lastMonthBookings = document.getElementById("lastMonthBookings");
+    const lastMonthRevenue = document.getElementById("lastMonthRevenue");
+    const bookingsGrowth = document.getElementById("bookingsGrowth");
+    const revenueGrowth = document.getElementById("revenueGrowth");
+
+    if (thisMonthBookings) {
+      thisMonthBookings.textContent = `${monthly.currentMonth?.bookings || 0} bookings`;
+      thisMonthRevenue.textContent = `₹${monthly.currentMonth?.revenue || 0}`;
+    }
+    if (lastMonthBookings) {
+      lastMonthBookings.textContent = `${monthly.lastMonth?.bookings || 0} bookings`;
+      lastMonthRevenue.textContent = `₹${monthly.lastMonth?.revenue || 0}`;
+    }
+    if (bookingsGrowth) {
+      const bg = monthly.growth?.bookings || 0;
+      bookingsGrowth.textContent = bg >= 0 ? `↑ ${bg}% bookings` : `↓ ${Math.abs(bg)}% bookings`;
+      bookingsGrowth.className = bg >= 0 ? "text-success" : "text-danger";
+    }
+    if (revenueGrowth) {
+      const rg = monthly.growth?.revenue || 0;
+      revenueGrowth.textContent = rg >= 0 ? `↑ ${rg}% revenue` : `↓ ${Math.abs(rg)}% revenue`;
+      revenueGrowth.className = rg >= 0 ? "text-success" : "text-danger";
+    }
+  } catch (error) {
+    console.error("Error loading monthly stats:", error);
+  }
+}
+
+// Make loadAnalytics available globally
+window.loadAnalytics = loadAnalytics;
 
 // Initialize only after DOM is ready
 window.addEventListener("DOMContentLoaded", async () => {

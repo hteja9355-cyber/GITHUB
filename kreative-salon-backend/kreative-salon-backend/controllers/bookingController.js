@@ -1,4 +1,10 @@
 const Booking = require("../models/Booking");
+const User = require("../models/User");
+const {
+  sendBookingRequestEmail,
+  sendBookingConfirmedEmail,
+  sendNewBookingNotification
+} = require("../services/emailService");
 
 const createBooking = async (req, res) => {
   try {
@@ -43,6 +49,32 @@ const createBooking = async (req, res) => {
       totalAmount,
       userId: req.user.id
     });
+
+    // Get user email for sending confirmation
+    const user = await User.findById(req.user.id);
+    
+    // Send email to customer about their booking request
+    if (user && user.email) {
+      sendBookingRequestEmail(user.email, user.name, {
+        services,
+        appointmentDate: finalDate,
+        appointmentTime: finalTime,
+        totalAmount
+      });
+    }
+
+    // Send notification to admin about new booking request
+    const adminUser = await User.findOne({ role: "admin" });
+    if (adminUser && adminUser.email) {
+      sendNewBookingNotification(adminUser.email, {
+        name: name || user.name,
+        phone: phone || "",
+        services,
+        appointmentDate: finalDate,
+        appointmentTime: finalTime,
+        notes: notes || ""
+      });
+    }
 
     res.status(201).json({
       message: "Booking created successfully",
@@ -89,12 +121,14 @@ const getAdminStats = async (req, res) => {
     const d = new Date();
     const localToday = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-    const totalBookings = await Booking.countDocuments();
+    const totalBookings = await Booking.countDocuments({ status: 'confirmed' });
     const todayBookings = await Booking.countDocuments({
+      status: 'confirmed',
       appointmentDate: localToday
     });
     
     const revenueResult = await Booking.aggregate([
+      { $match: { status: 'confirmed' } },
       { $group: { _id: null, totalRevenue: { $sum: '$totalAmount' } } }
     ]);
     
@@ -130,10 +164,67 @@ const getRecentBookings = async (req, res) => {
   }
 };
 
+// Get pending booking requests (for admin)
+const getPendingRequests = async (req, res) => {
+  try {
+    const bookings = await Booking.find({ status: 'pending' })
+      .sort({ createdAt: -1 })
+      .populate('userId', 'name email phone');
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Get pending requests error:", error);
+    res.status(500).json({
+      message: "Failed to fetch pending requests",
+      error: error.message
+    });
+  }
+};
+
+// Confirm/Approve a booking request
+const confirmBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const booking = await Booking.findById(id).populate('userId', 'name email');
+    
+    if (!booking) {
+      return res.status(404).json({
+        message: "Booking not found"
+      });
+    }
+    
+    booking.status = 'confirmed';
+    await booking.save();
+    
+    // Send confirmation email to customer
+    if (booking.userId && booking.userId.email) {
+      sendBookingConfirmedEmail(booking.userId.email, booking.userId.name, {
+        services: booking.services,
+        appointmentDate: booking.appointmentDate,
+        appointmentTime: booking.appointmentTime,
+        totalAmount: booking.totalAmount
+      });
+    }
+    
+    res.status(200).json({
+      message: "Booking confirmed successfully",
+      booking
+    });
+  } catch (error) {
+    console.error("Confirm booking error:", error);
+    res.status(500).json({
+      message: "Failed to confirm booking",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createBooking,
   getAllBookings,
   getUserBookings,
   getAdminStats,
-  getRecentBookings
+  getRecentBookings,
+  getPendingRequests,
+  confirmBooking
 };

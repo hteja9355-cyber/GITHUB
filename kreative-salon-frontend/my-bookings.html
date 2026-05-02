@@ -42,7 +42,7 @@
 
   <script src="assets/js/auth.js"></script>
   <script>
-    async function loadBookings() {
+async function loadBookings() {
       const bookingsList = document.getElementById("bookingsList");
 
       bookingsList.innerHTML = `
@@ -65,16 +65,19 @@
 
         bookingsList.innerHTML = "";
 
-        if (!bookings.length) {
+        // Filter only confirmed bookings
+        const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
+
+        if (!confirmedBookings.length) {
           bookingsList.innerHTML = `
             <div class="col-12">
-              <div class="alert alert-warning">No bookings found.</div>
+              <div class="alert alert-warning">No confirmed bookings found. Your booking requests will appear here once confirmed by the admin.</div>
             </div>
           `;
           return;
         }
 
-        bookings.forEach((booking) => {
+        confirmedBookings.forEach((booking) => {
           const servicesText = Array.isArray(booking.services)
             ? booking.services.join(", ")
             : "N/A";
@@ -89,12 +92,19 @@
           const card = document.createElement("div");
           card.className = "col-md-6";
 
+          const statusBadge = booking.status === 'confirmed' 
+            ? '<span class="badge bg-success fs-6">Confirmed</span>'
+            : '<span class="badge bg-warning text-dark fs-6">Pending</span>';
+
           card.innerHTML = `
             <div class="card border-0 shadow-sm rounded-4 h-100">
               <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-start mb-3">
                   <h3 class="fw-bold mb-0">${nameText}</h3>
-                  <span class="badge bg-primary fs-6">${totalText}</span>
+                  <div class="d-flex gap-2">
+                    ${statusBadge}
+                    <span class="badge bg-primary fs-6">${totalText}</span>
+                  </div>
                 </div>
 
                 <p class="mb-2"><strong>Services:</strong> ${servicesText}</p>
